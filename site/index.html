@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>間違いみっけ</title>
+  <meta name="description" content="上下の絵柄を比べて9個の違いを探そう。">
+  <link rel="canonical" href="https://chameleonjp.codeberg.page/machigai_mikke/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="間違いみっけ">
+  <meta property="og:description" content="上下の絵柄を比べて9個の違いを探そう。">
+  <meta property="og:url" content="https://chameleonjp.codeberg.page/machigai_mikke/">
+  <meta name="twitter:card" content="summary">
+  <style>
+    :root {
+      --bg1: #dff7ef;
+      --bg2: #f2f6fb;
+      --card: rgba(255,255,255,.94);
+      --text: #1f2937;
+      --muted: #64748b;
+      --line: #d8e0ec;
+      --main: #0f766e;
+      --main2: #16a34a;
+      --danger: #ef4444;
+      --warn: #f59e0b;
+      --hint: #fff3a3;
+      --okBg: #e8f8ef;
+      --okLine: #0f9f73;
+      --shadow: 0 10px 28px rgba(15, 23, 42, .08);
+      --cell-gap: 2px;
+      --cell-font: clamp(15px, 4.9vw, 21px);
+      --cell-min-h: clamp(22px, 5.8vw, 27px);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    html {
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+      touch-action: manipulation;
+      background: linear-gradient(160deg, var(--bg1), var(--bg2));
+    }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+      color: var(--text);
+      background: linear-gradient(160deg, var(--bg1), var(--bg2));
+      overflow-x: hidden;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+      overscroll-behavior: contain;
+    }
+    a { color: inherit; text-decoration: none; }
+    button, input, a { font: inherit; }
+    button, a, input, .cell { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+    button, a { cursor: pointer; pointer-events: auto; }
+
+    .app { width: min(100%, 430px); margin: 0 auto; padding: 14px 12px calc(22px + env(safe-area-inset-bottom)); }
+    #gameScreen { --cell-gap: 2px; --cell-font: clamp(15px, 4.9vw, 21px); --cell-min-h: clamp(22px, 5.8vw, 27px); }
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    .card, .board-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      padding: 16px;
+      margin: 0 0 14px;
+      backdrop-filter: blur(8px);
+    }
+    .hero { text-align: center; padding: 22px 16px; }
+    .eyebrow { margin: 0 0 8px; color: var(--main); font-size: 13px; font-weight: 800; letter-spacing: .04em; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 12px; font-size: clamp(34px, 10vw, 48px); line-height: 1.12; letter-spacing: .02em; }
+    h2 { margin-bottom: 12px; font-size: 22px; }
+    h3 { margin-bottom: 8px; font-size: 17px; }
+    p { line-height: 1.7; }
+    .lead { margin-bottom: 0; color: var(--muted); font-weight: 700; }
+    .note { color: var(--muted); font-size: 13px; }
+
+    .name-box label { display: block; font-weight: 900; margin-bottom: 8px; }
+    .required { display: inline-block; margin-left: 6px; padding: 2px 7px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 12px; }
+    .name-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+    input[type="text"] {
+      width: 100%; min-height: 46px; border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; font-size: 16px; background: #fff; color: var(--text);
+      -webkit-user-select: text; user-select: text; -webkit-touch-callout: default;
+    }
+    .error { min-height: 1.5em; color: #dc2626; font-weight: 800; font-size: 13px; margin: 8px 0 0; }
+    .saved-name { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+
+    .primary, .secondary, .danger, .hint-button, .link-button {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      width: 100%; min-height: 52px; border-radius: 16px; border: 1px solid var(--line);
+      padding: 12px 14px; font-weight: 900; font-size: 17px; background: #fff; color: var(--main);
+    }
+    .primary { background: #129e83; color: #fff; border-color: transparent; box-shadow: 0 8px 18px rgba(18,158,131,.18); }
+    .secondary, .link-button { background: #fff; color: var(--main); }
+    .danger { background: var(--danger); color: #fff; border-color: transparent; }
+    .hint-button { background: var(--warn); color: #fff; border-color: transparent; }
+    .button-grid { display: grid; gap: 10px; }
+    .button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    .mode-starts { display: grid; gap: 10px; }
+    .score-list { display: grid; gap: 8px; }
+    .score-card { border: 1px solid var(--line); background: #fbfdff; border-radius: 14px; padding: 10px 12px; }
+    .score-title { font-weight: 900; margin: 0 0 4px; }
+    .score-text { margin: 0; color: var(--muted); font-size: 14px; }
+
+    .modal { position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(15, 23, 42, .42); }
+    .modal.open { display: flex; }
+    .modal-card { width: min(100%, 390px); max-height: 80vh; overflow-y: auto; background: #fff; border-radius: 20px; padding: 18px; box-shadow: 0 20px 60px rgba(0,0,0,.22); }
+
+    .countdown-box { min-height: 70vh; display: grid; place-items: center; text-align: center; }
+    .count-number { font-size: clamp(64px, 22vw, 110px); font-weight: 1000; color: var(--main); }
+
+    .game-header { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; background: rgba(244,248,251,.96); border: 1px solid var(--line); padding: 7px 8px; margin-bottom: 8px; backdrop-filter: blur(10px); }
+    .mode-label { margin: 0 0 3px; font-size: 18px; font-weight: 1000; }
+    .stats { margin: 0; color: var(--muted); font-size: 13px; font-weight: 700; line-height: 1.2; }
+    .game-actions { display: grid; grid-template-columns: auto auto; gap: 7px; align-items: center; }
+    .game-actions button { width: auto; min-width: 78px; min-height: 42px; padding: 8px 11px; border-radius: 999px; font-size: 14px; }
+
+    #gameScreen .board-card { padding: 8px 7px 9px; margin-bottom: 8px; border-radius: 16px; }
+    #gameScreen .board-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 5px; padding: 0 4px; }
+    #gameScreen .board-head h2 { margin: 0; font-size: 17px; }
+    #gameScreen .board-hint { color: var(--muted); font-size: 12px; font-weight: 900; white-space: nowrap; }
+    .board-card { padding: 10px 9px 12px; }
+    .board-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 8px; padding: 0 5px; }
+    .board-head h2 { margin: 0; font-size: 18px; }
+    .board-hint { color: var(--muted); font-size: 13px; font-weight: 900; white-space: nowrap; }
+    .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--cell-gap); }
+    .cell {
+      min-width: 0; min-height: var(--cell-min-h); height: var(--cell-min-h);
+      display: flex; align-items: center; justify-content: center; padding: 0; overflow: hidden;
+      border: 1px solid var(--line); border-radius: 9px; background: #fff; line-height: 1; font-size: var(--cell-font);
+      box-shadow: inset 0 0 0 1px rgba(148,163,184,.06);
+    }
+    .answer-cell { color: var(--text); pointer-events: auto; position: relative; z-index: 2; }
+    .cell.found { background: var(--okBg); border-color: var(--okLine); color: #e11d1d; font-weight: 1000; }
+    .cell.hint { background: var(--hint); border-color: var(--warn); box-shadow: 0 0 0 2px rgba(245,158,11,.24) inset; }
+    .cell.wrong { animation: wrongFlash .24s ease; }
+    @keyframes wrongFlash { 0%{background:#fee2e2;transform:scale(1)} 50%{background:#fecaca;transform:scale(.95)} 100%{background:#fff;transform:scale(1)} }
+
+    .result-card { text-align: center; }
+    .result-details { display: grid; gap: 8px; margin-top: 14px; text-align: left; }
+    .result-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding: 0 0 8px; }
+    .result-row span { color: var(--muted); font-weight: 700; }
+    .result-row strong { font-size: 17px; text-align: right; }
+    .result-row.emphasis strong { font-size: 20px; color: var(--main); }
+    .best-message { margin-top: 14px; color: var(--main); font-size: 18px; font-weight: 1000; }
+    .ranking-status { margin-top: 12px; border: 1px solid var(--line); border-radius: 14px; padding: 10px; color: var(--muted); font-weight: 800; }
+    .ranking-status.ok { color: var(--main); background: #ecfdf5; border-color: #a7f3d0; }
+    .ranking-status.error { color: #dc2626; background: #fff1f2; border-color: #fecdd3; }
+    .result-actions { display: grid; gap: 10px; position: relative; z-index: 10; pointer-events: auto; }
+    .ranking-card h2 { margin-bottom: 4px; }
+    .ranking-list { display: grid; gap: 6px; margin-top: 10px; }
+    .ranking-item { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: #fff; align-items: center; font-size: 14px; }
+    .ranking-empty { color: var(--muted); font-weight: 700; }
+
+    .toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 200; transform: translateX(-50%) translateY(20px); opacity: 0; pointer-events: none; width: max-content; max-width: calc(100% - 28px); background: rgba(15,23,42,.92); color: #fff; padding: 10px 14px; border-radius: 999px; transition: .18s ease; font-size: 14px; font-weight: 800; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @media (max-width: 360px) {
+      .app { padding-left: 8px; padding-right: 8px; }
+      .card { padding: 14px; border-radius: 17px; }
+      .board-card { padding-left: 7px; padding-right: 7px; }
+      .game-header { padding-left: 8px; padding-right: 8px; }
+      .game-actions button { min-width: 78px; font-size: 14px; padding-left: 10px; padding-right: 10px; }
+      :root { --cell-gap: 2px; --cell-min-h: clamp(21px, 5.8vw, 26px); --cell-font: clamp(14px, 4.9vw, 20px); }
+      #gameScreen { --cell-gap: 2px; --cell-min-h: clamp(21px, 5.8vw, 26px); --cell-font: clamp(14px, 4.9vw, 20px); }
+    }
+    [hidden] { display: none !important; }
+    .x-share { background: #000; color: #fff; border-color: #000; min-height: 44px; white-space: normal; overflow-wrap: anywhere; }
+    select, input[type="range"], .settings button { min-height: 44px; max-width: 100%; }
+    select { width: 100%; font: inherit; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: #fff; }
+    .settings { display: grid; gap: 10px; }
+    .settings label { font-weight: 700; }
+    .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .setting-row button { width: auto; }
+    .ranking-item { grid-template-columns: 3em minmax(0, 1fr) auto; }
+    .ranking-item span { overflow-wrap: anywhere; }
+    .result-actions { margin-bottom: 14px; }
+    .result-row { flex-wrap: wrap; }
+    .game-actions button { min-height: 44px; }
+    .game-header, .board-head { overflow-wrap: anywhere; }
+    .board-hint { white-space: normal !important; }
+    .share-fallback textarea { width: 100%; min-height: 150px; font: inherit; user-select: text; }
+    @media (max-width: 430px) { .game-header { grid-template-columns: 1fr; } .game-actions { justify-content: end; } }
+    @media (max-height: 500px) { .game-header { position: static; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section id="homeScreen" class="screen active">
+      <div class="card hero">
+        <p class="eyebrow" data-i18n="subtitle">スマホ向け違い探しゲーム</p>
+        <h1>間違いみっけ</h1>
+        <p class="lead" data-i18n="lead">上下の絵柄を比べて、9個の違いを見つけよう。</p>
+      </div>
+
+      <div class="card settings">
+        <label for="languageSelect" data-i18n="language">言語</label>
+        <select id="languageSelect" onchange="MM.changeLanguage(this.value)"></select>
+        <div class="setting-row"><span data-i18n="sound">効果音</span><button id="soundToggle" class="secondary" type="button" aria-pressed="true" onclick="MM.toggleSound()">オン</button></div>
+        <label for="volumeInput" data-i18n="volume">音量</label>
+        <input id="volumeInput" type="range" min="0" max="1" step="0.05" value="0.35" oninput="MM.changeVolume(this.value)">
+      </div>
+
+      <div class="card name-box">
+        <label for="playerNameInput" data-i18n="name">ランキング用の名前（任意）</label>
+        <p id="namePrivacy" class="note" data-i18n="privacy">名前を入力すると、名前と記録がランキングに公開されます。空欄でも遊べます。</p>
+        <div class="name-row">
+          <input id="playerNameInput" type="text" maxlength="12" autocomplete="nickname" aria-describedby="namePrivacy" placeholder="名前を入力">
+          <button id="saveNameButton" class="secondary" style="width:auto; min-width:88px;" type="button" onclick="MM.saveNameFromHome()" data-i18n="save">保存</button>
+        </div>
+        <p id="nameError" class="error"></p>
+        <p id="savedNameText" class="saved-name">まだ名前が保存されていません。</p>
+      </div>
+
+      <div class="card">
+        <h2 data-i18n="choose">難易度を選んでゲーム開始</h2>
+        <div class="mode-starts">
+          <button class="primary" type="button" onclick="MM.start('easy')" data-i18n="easy">イージー</button>
+          <button class="primary" type="button" onclick="MM.start('hard')" data-i18n="hard">ハード</button>
+          <button class="primary" type="button" onclick="MM.start('superHard')" data-i18n="superHard">超ハード</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 data-i18n="best">ベストスコア</h2>
+        <p class="note" data-i18n="bestNote">自己ベストはこのブラウザに保存します。</p>
+        <div id="scoreList" class="score-list"></div>
+      </div>
+
+      <div class="card">
+        <h2 data-i18n="menu">メニュー</h2>
+        <div class="button-grid">
+          <button class="secondary" type="button" onclick="MM.openRules()" data-i18n="rules">遊び方</button>
+          <button class="secondary x-share" type="button" onclick="MM.shareGame()" data-i18n="share">Xでシェア</button>
+          <a class="link-button" href="https://chameleonjp-lab.github.io/chameleonjp_lab/ranking.html?game=machigai_mikke" data-i18n="ranking">ランキング</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="countdownScreen" class="screen">
+      <div class="countdown-box">
+        <div>
+          <p class="eyebrow" data-i18n="countdown">まもなく開始</p>
+          <div id="countdownNumber" class="count-number">3</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="gameScreen" class="screen">
+      <div class="game-header">
+        <div>
+          <p id="modeLabel" class="mode-label">イージー</p>
+          <p class="stats"><span id="timerText">00:00.0</span>　<span data-i18n="found">発見</span> <span id="foundText">0/9</span>　<span data-i18n="mistakes">誤タップ</span> <span id="mistakeText">0</span>　<span data-i18n="hint">ヒント</span> <span id="hintText">0</span></p>
+        </div>
+        <div class="game-actions">
+          <button id="hintButton" class="hint-button" type="button" onclick="MM.useHint()" data-i18n="hint">ヒント</button>
+          <button id="retireButton" class="danger" type="button" onclick="MM.retire()" data-i18n="retire">リタイア</button>
+        </div>
+      </div>
+
+      <div class="board-card">
+        <div class="board-head"><h2 data-i18n="sample">見本</h2><span class="board-hint" data-i18n="viewOnly">見るだけ</span></div>
+        <div id="sampleGrid" class="grid"></div>
+      </div>
+
+      <div class="board-card">
+        <div class="board-head"><h2 data-i18n="answer">見本と違う絵柄をタップ</h2><span class="board-hint" data-i18n="findNine">9個見つける</span></div>
+        <div id="answerGrid" class="grid"></div>
+      </div>
+    </section>
+
+    <section id="resultScreen" class="screen">
+      <div class="card result-card">
+        <p class="eyebrow" data-i18n="result">結果</p>
+        <h1 id="resultTitle">クリア</h1>
+        <div id="resultDetails" class="result-details"></div>
+        <div id="bestMessage" class="best-message"></div>
+        <div id="rankingStatus" class="ranking-status" role="status" aria-live="polite">ランキング：未送信</div>
+      </div>
+
+      <div class="result-actions">
+        <button class="primary" type="button" onclick="MM.retry()" data-i18n="retry">もう一度遊ぶ</button>
+        <button class="secondary" type="button" onclick="MM.backHome()" data-i18n="home">ホームへ戻る</button>
+        <button class="secondary x-share" type="button" onclick="MM.shareResult()" data-i18n="share">Xでシェア</button>
+        <a id="resultRankingLink" class="link-button" href="https://chameleonjp-lab.github.io/chameleonjp_lab/ranking.html?game=machigai_mikke&type=best" data-i18n="ranking">ランキング</a>
+      </div>
+
+      <div class="card ranking-card">
+        <h2 id="resultRankingTitle">ランキング</h2>
+        <p class="note" data-i18n="rankingNote">この難易度のベスト記録を最大30件表示します。</p>
+        <div id="resultRankingList" class="ranking-list" aria-live="polite"><p class="ranking-empty">読み込み中…</p></div>
+        <button id="reloadRankingButton" class="secondary" type="button" onclick="MM.loadResultRanking()" data-i18n="reload" hidden>ランキングを再読み込み</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="rulesModal" class="modal" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <h2 data-i18n="rules">遊び方</h2>
+      <p data-i18n="rulesText">下の盤面だけをタップして9個の違いを探します。</p>
+      <button class="primary" type="button" onclick="MM.closeRules()" data-i18n="close">閉じる</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite">コピーしました</div>
+
+  <div id="shareFallback" class="modal share-fallback" role="dialog" aria-modal="true" aria-labelledby="shareFallbackTitle">
+    <div class="modal-card">
+      <h2 id="shareFallbackTitle" data-i18n="shareBlocked">Xを開けませんでした。共有文をコピーできます。</h2>
+      <textarea id="shareFallbackText" readonly aria-labelledby="shareFallbackTitle"></textarea>
+      <button class="secondary" type="button" onclick="MM.copyShare()" data-i18n="copyShare">共有文をコピー</button>
+      <button class="primary" type="button" onclick="MM.closeShare()" data-i18n="close">閉じる</button>
+    </div>
+  </div>
+
+  <script src="common.js"></script>
+  <script src="locales.js"></script>
+  <script src="audio.js"></script>
+  <script src="normal-score-ack8.js"></script>
+  <script>
+  (() => {
+    'use strict';
+
+    const COLS = 7;
+    const ROWS = 8;
+    const TOTAL = COLS * ROWS;
+    const DIFF_COUNT = 9;
+    const SCORE_SCALE = 100;
+    const MISTAKE_PENALTY = 60;
+    const FOUND = '⭕️';
+    const CLIENT_VERSION = 'machigai-mikke-v1.0.0-refactor-stable-v3';
+    const SUPABASE_URL = 'https://mlpnjgezrnhdxsxolyzj.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_drzcy0v97knU6FgjqSgBHw_0A9XPdFM';
+    const RECORD_KEY = 'machigai_mikke_records_v3';
+    const NAME_KEY = 'machigai_mikke_player_name_v3';
+    const GAME_URL = 'https://chameleonjp.codeberg.page/machigai_mikke/';
+    const LANGUAGE_KEY = 'machigai_mikke_language_v1';
+    const SOUND_KEY = 'machigai_mikke_sound_v1';
+    function readSetting(key) { try { return localStorage.getItem(key); } catch { return null; } }
+    let language = MMCommon.resolveLanguage(readSetting(LANGUAGE_KEY), navigator.languages || [navigator.language]);
+    let soundSettings = MMCommon.soundSettings(readSetting(SOUND_KEY));
+    const sound = MMAudio.create({ AudioContext: window.AudioContext || window.webkitAudioContext, now: () => performance.now() / 1000, hidden: () => document.hidden }, soundSettings);
+    const t = (key, parameters) => MMText.text(language, key, parameters);
+    const modeLabel = (key) => t(key);
+
+    const MODES = {
+      easy: {
+        label: 'イージー',
+        rankingSlug: 'machigai_mikke_easy',
+        detailMode: 'easy',
+        transform: 'normal',
+        hintPenalty: 15,
+        sets: [
+          ['🩷','❤️','🧡','💛','💚','🩵','💙','💜','🖤','🩶','🤍','🤎'],
+          ['🔴','🟠','🟡','🟢','🔵','🟣','⚫️','⚪️','🟤'],
+          ['⚽️','🏀','🥎','🎾','🏐','⚾️']
+        ]
+      },
+      hard: {
+        label: 'ハード',
+        rankingSlug: 'machigai_mikke_hard',
+        detailMode: 'hard',
+        transform: 'vertical',
+        hintPenalty: 30,
+        sets: [
+          ['🌖','🌗','🌘','🌒','🌓','🌔'],
+          ['🌎','🌍','🌏'],
+          ['🏃‍➡️','🏃‍♂️‍➡️','🏃‍♀️','🏃','🏃‍♂️','🏃‍♀️‍➡️']
+        ]
+      },
+      superHard: {
+        label: '超ハード',
+        rankingSlug: 'machigai_mikke_super_hard',
+        detailMode: 'super_hard',
+        transform: 'both',
+        hintPenalty: 60,
+        sets: [
+          ['🕐','🕑','🕒','🕓','🕔','🕖','🕗','🕘','🕙','🕚','🕜','🕝','🕞','🕟','🕠','🕢','🕣','🕤','🕥','🕦']
+        ]
+      }
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const el = {
+      screens: { home: $('homeScreen'), countdown: $('countdownScreen'), game: $('gameScreen'), result: $('resultScreen') },
+      playerNameInput: $('playerNameInput'), saveNameButton: $('saveNameButton'), nameError: $('nameError'), savedNameText: $('savedNameText'),
+      scoreList: $('scoreList'), countdownNumber: $('countdownNumber'), modeLabel: $('modeLabel'), timerText: $('timerText'), foundText: $('foundText'), mistakeText: $('mistakeText'), hintText: $('hintText'),
+      sampleGrid: $('sampleGrid'), answerGrid: $('answerGrid'), resultTitle: $('resultTitle'), resultDetails: $('resultDetails'), bestMessage: $('bestMessage'), rankingStatus: $('rankingStatus'), reloadRankingButton: $('reloadRankingButton'), resultRankingLink: $('resultRankingLink'), resultRankingTitle: $('resultRankingTitle'), resultRankingList: $('resultRankingList'),
+      rulesModal: $('rulesModal'), toast: $('toast')
+    };
+
+    let state = null;
+    let lastResult = null;
+    let timer = 0;
+    let countdownTimer = 0;
+    let toastTimer = 0;
+    let rankRequest = 0;
+    let rankController = null;
+    let currentName = readSetting(NAME_KEY) || '';
+    let resultRankingState = 'idle';
+    let resultRankingRows = [];
+    let shareGeneration = 0;
+
+    function safeJSON(raw, fallback) { try { return raw ? JSON.parse(raw) : fallback; } catch { return fallback; } }
+    function getRecords() { try { return safeJSON(localStorage.getItem(RECORD_KEY), {}); } catch { return {}; } }
+    function setRecords(records) { try { localStorage.setItem(RECORD_KEY, JSON.stringify(records)); return true; } catch { return false; } }
+    function getName() { return currentName; }
+    function setName(name) { currentName = name; try { localStorage.setItem(NAME_KEY, name); return true; } catch { return false; } }
+    function showToast(message) { clearTimeout(toastTimer); el.toast.textContent = message; el.toast.classList.add('show'); toastTimer = setTimeout(() => el.toast.classList.remove('show'), 1000); }
+    function fmt(seconds) { return seconds === null || seconds === undefined || !Number.isFinite(Number(seconds)) ? '—' : `${Number(seconds).toFixed(2)} ${t('seconds')}`; }
+    function fmtTimer(seconds) { const m = Math.floor(seconds / 60); const s = (seconds % 60).toFixed(1).padStart(4, '0'); return `${String(m).padStart(2, '0')}:${s}`; }
+    function nowElapsed() { return state && state.startedAt ? Math.max(0, (performance.now() - state.startedAt) / 1000) : 0; }
+    function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+    function showScreen(name) { Object.values(el.screens).forEach(s => s.classList.remove('active')); el.screens[name].classList.add('active'); window.scrollTo({ top: 0, behavior: 'auto' }); }
+
+    function normalizeName(name) { return MMCommon.normalizeName(name); }
+    function saveNameFromHome() {
+      const name = normalizeName(el.playerNameInput.value);
+      const saved = setName(name);
+      el.nameError.textContent = saved ? '' : t('storageFailed');
+      renderName();
+      showToast(t(saved ? 'saveOK' : 'storageFailed'));
+      return true;
+    }
+    function renderName() {
+      const name = getName();
+      el.playerNameInput.value = name;
+      el.savedNameText.textContent = name ? t('saved', { name }) : t('anonymous');
+    }
+
+    function renderScores() {
+      const records = getRecords();
+      el.scoreList.innerHTML = '';
+      Object.entries(MODES).forEach(([key, mode]) => {
+        const rec = records[key];
+        let text = t('bestEmpty');
+        if (rec && typeof rec.finalSeconds === 'number') text = `${fmt(rec.finalSeconds)} / ${t('mistakes')}: ${rec.mistakes || 0} / ${t('hint')}: ${rec.hints || 0}`;
+        else if (rec && rec.retired) text = t('retired');
+        const box = document.createElement('div');
+        box.className = 'score-card';
+        const title = document.createElement('p'); title.className = 'score-title'; title.textContent = modeLabel(key);
+        const score = document.createElement('p'); score.className = 'score-text'; score.textContent = text;
+        box.append(title, score);
+        el.scoreList.appendChild(box);
+      });
+    }
+    function renderHome() { renderName(); renderScores(); }
+
+    function sourceFromAnswerIndex(answerIndex, transform) {
+      let row = Math.floor(answerIndex / COLS), col = answerIndex % COLS;
+      if (transform === 'vertical' || transform === 'both') row = ROWS - 1 - row;
+      if (transform === 'both') col = COLS - 1 - col;
+      return row * COLS + col;
+    }
+    function makeIndexes(count, max) { const s = new Set(); while (s.size < count) s.add(Math.floor(Math.random() * max)); return s; }
+    function pickDifferent(set, original) { let next = pick(set); while (next === original && set.length > 1) next = pick(set); return next; }
+
+    function buildGame(modeKey) {
+      const mode = MODES[modeKey];
+      const set = pick(mode.sets);
+      const sample = Array.from({ length: TOTAL }, () => pick(set));
+      const diffSources = makeIndexes(DIFF_COUNT, TOTAL);
+      const answer = [];
+      for (let answerIndex = 0; answerIndex < TOTAL; answerIndex++) {
+        const source = sourceFromAnswerIndex(answerIndex, mode.transform);
+        const base = sample[source];
+        answer.push({ answerIndex, source, emoji: diffSources.has(source) ? pickDifferent(set, base) : base });
+      }
+      return { modeKey, mode, sample, answer, diffSources, found: new Set(), hinted: new Set(), mistakes: 0, hints: 0, startedAt: 0, ended: false, finishLock: false };
+    }
+
+    function start(modeKey) {
+      if (!MODES[modeKey]) return;
+      closeShare();
+      const name = normalizeName(el.playerNameInput.value);
+      setName(name);
+      sound.gesture(); sound.play('start');
+      clearInterval(timer); clearInterval(countdownTimer);
+      rankRequest++; if (rankController) rankController.abort();
+      state = buildGame(modeKey); state.run = MMCommon.createRun(name, modeKey); lastResult = null;
+      resultRankingState = 'idle'; resultRankingRows = [];
+      showScreen('countdown');
+      let count = 3; el.countdownNumber.textContent = '3';
+      countdownTimer = setInterval(() => {
+        count--;
+        if (count > 0) { el.countdownNumber.textContent = String(count); return; }
+        if (count === 0) { el.countdownNumber.textContent = t('go'); return; }
+        clearInterval(countdownTimer);
+        startGameScreen();
+      }, 1000);
+    }
+    function startGameScreen() {
+      if (!state) return;
+      state.startedAt = performance.now();
+      state.ended = false; state.finishLock = false;
+      el.modeLabel.textContent = modeLabel(state.modeKey);
+      renderBoards(); updateHud();
+      showScreen('game');
+      clearInterval(timer);
+      timer = setInterval(() => { updateHud(); if (state && !state.ended && state.found.size >= DIFF_COUNT) finishClear(); }, 120);
+    }
+
+    function renderBoards() {
+      el.sampleGrid.innerHTML = ''; el.answerGrid.innerHTML = '';
+      state.sample.forEach((emoji, idx) => {
+        const cell = document.createElement('div');
+        cell.id = `sample-${idx}`;
+        cell.className = 'cell';
+        cell.textContent = emoji;
+        el.sampleGrid.appendChild(cell);
+      });
+      state.answer.forEach(item => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = `answer-${item.source}`;
+        btn.className = 'cell answer-cell';
+        btn.dataset.source = String(item.source);
+        btn.textContent = item.emoji;
+        btn.setAttribute('aria-label', t('cell'));
+        btn.addEventListener('click', () => tapSource(item.source));
+        btn.addEventListener('pointerup', (e) => { e.preventDefault(); tapSource(item.source); });
+        btn.addEventListener('touchend', (e) => { e.preventDefault(); tapSource(item.source); }, { passive: false });
+        el.answerGrid.appendChild(btn);
+      });
+    }
+    function updateHud() {
+      if (!state || state.startedAt <= 0) return;
+      el.timerText.textContent = fmtTimer(nowElapsed());
+      el.foundText.textContent = `${state.found.size}/${DIFF_COUNT}`;
+      el.mistakeText.textContent = String(state.mistakes);
+      el.hintText.textContent = String(state.hints);
+    }
+    function markFound(source) {
+      const sample = document.getElementById(`sample-${source}`);
+      const answer = document.getElementById(`answer-${source}`);
+      [sample, answer].forEach(cell => { if (cell) { cell.textContent = FOUND; cell.classList.remove('hint'); cell.classList.add('found'); } });
+    }
+    function tapSource(source) {
+      if (!state || state.ended || state.finishLock) return;
+      const src = Number(source);
+      if (!Number.isInteger(src)) return;
+      if (state.found.has(src)) return;
+      if (state.diffSources.has(src)) {
+        state.found.add(src);
+        markFound(src);
+        updateHud();
+        if (state.found.size >= DIFF_COUNT) {
+          finishClear();
+        } else sound.play('found');
+        return;
+      }
+      state.mistakes++;
+      sound.play('wrong');
+      updateHud();
+      const wrong = document.getElementById(`answer-${src}`);
+      if (wrong) { wrong.classList.add('wrong'); setTimeout(() => wrong.classList.remove('wrong'), 260); }
+    }
+    function useHint() {
+      if (!state || state.ended || state.finishLock) return;
+      const candidates = [...state.diffSources].filter(src => !state.found.has(src) && !state.hinted.has(src));
+      if (!candidates.length) { showToast(t('noHints')); return; }
+      const src = pick(candidates);
+      state.hinted.add(src); state.hints++;
+      const answer = document.getElementById(`answer-${src}`);
+      if (answer) answer.classList.add('hint');
+      updateHud();
+      sound.gesture(); sound.play('hint');
+      showToast(t('hintAdded', { n: state.mode.hintPenalty }));
+    }
+    function retire() {
+      if (!state || state.ended || state.finishLock) return;
+      state.finishLock = true; state.ended = true; clearInterval(timer);
+      const elapsed = nowElapsed();
+      saveRetire(state.modeKey);
+      lastResult = { status: 'retired', modeKey: state.modeKey, mode: state.mode, elapsedSeconds: elapsed, found: state.found.size, mistakes: state.mistakes, hints: state.hints, run: state.run };
+      sound.play('retire');
+      finalizeResult();
+    }
+    function finishClear() {
+      if (!state || state.ended || state.finishLock) return;
+      state.finishLock = true; state.ended = true; clearInterval(timer);
+      const elapsed = nowElapsed();
+      const mistakePenalty = state.mistakes * MISTAKE_PENALTY;
+      const hintPenalty = state.hints * state.mode.hintPenalty;
+      const finalSeconds = elapsed + mistakePenalty + hintPenalty;
+      const scoreInt = Math.round(finalSeconds * SCORE_SCALE);
+      const result = { status: 'clear', modeKey: state.modeKey, mode: state.mode, elapsedSeconds: elapsed, mistakes: state.mistakes, hints: state.hints, mistakePenalty, hintPenalty, finalSeconds, scoreInt, run: state.run };
+      result.bestUpdated = saveBest(result);
+      lastResult = result;
+      sound.play(result.bestUpdated ? 'best' : 'clear');
+      finalizeResult();
+    }
+    function finalizeResult() {
+      try { renderHome(); renderResult(); } catch (e) { console.error(e); fallbackResult(e); }
+      showScreen('result');
+      if (lastResult && lastResult.status === 'clear') submitRanking();
+      loadResultRanking();
+    }
+    function saveBest(result) {
+      const records = getRecords();
+      const old = records[result.modeKey];
+      const should = !old || typeof old.finalSeconds !== 'number' || result.finalSeconds < old.finalSeconds;
+      if (!should) return false;
+      records[result.modeKey] = { finalSeconds: result.finalSeconds, rawSeconds: result.elapsedSeconds, mistakes: result.mistakes, hints: result.hints, mistakePenalty: result.mistakePenalty, hintPenalty: result.hintPenalty, scoreInt: result.scoreInt, retired: false, updatedAt: new Date().toISOString() };
+      return setRecords(records);
+    }
+    function saveRetire(modeKey) {
+      const records = getRecords();
+      if (!records[modeKey] || typeof records[modeKey].finalSeconds !== 'number') {
+        records[modeKey] = { retired: true, updatedAt: new Date().toISOString() };
+        setRecords(records);
+      }
+    }
+
+    function renderResult() {
+      el.resultDetails.innerHTML = ''; el.bestMessage.textContent = '';
+      if (!lastResult) return;
+      const modeParam = lastResult.mode.detailMode;
+      el.resultRankingLink.href = MMCommon.rankingURL(modeParam);
+      el.resultRankingTitle.textContent = `${modeLabel(lastResult.modeKey)} · ${t('ranking')}`;
+      renderSubmissionStatus();
+      if (lastResult.status === 'retired') {
+        el.resultTitle.textContent = t('retired');
+        row(t('mode'), modeLabel(lastResult.modeKey)); row(t('elapsed'), fmt(lastResult.elapsedSeconds)); row(t('found'), `${lastResult.found}/${DIFF_COUNT}`); row(t('mistakes'), String(lastResult.mistakes)); row(t('hint'), String(lastResult.hints));
+        return;
+      }
+      el.resultTitle.textContent = t('clear');
+      row(t('mode'), modeLabel(lastResult.modeKey)); row(t('elapsed'), fmt(lastResult.elapsedSeconds)); row(t('mistakes'), String(lastResult.mistakes)); row(t('mistakeAdded'), `+${fmt(lastResult.mistakePenalty)}`); row(t('hint'), String(lastResult.hints)); row(t('hintPenalty'), `+${fmt(lastResult.hintPenalty)}`); row(t('finalSeconds'), fmt(lastResult.finalSeconds), true); row(t('storedScore'), String(lastResult.scoreInt));
+      if (lastResult.bestUpdated) el.bestMessage.textContent = t('bestUpdated');
+    }
+    function fallbackResult(error) {
+      el.resultTitle.textContent = t(lastResult && lastResult.status === 'clear' ? 'clear' : 'retired');
+      el.resultDetails.innerHTML = '';
+      row(t('result'), t('displayError'));
+      if (lastResult && lastResult.status === 'clear') { row(t('finalSeconds'), fmt(lastResult.finalSeconds), true); row(t('storedScore'), String(lastResult.scoreInt)); }
+      renderSubmissionStatus();
+    }
+    function row(label, value, emphasis=false) {
+      const div = document.createElement('div'); div.className = `result-row${emphasis ? ' emphasis' : ''}`;
+      const labelNode = document.createElement('span'); labelNode.textContent = label;
+      const valueNode = document.createElement('strong'); valueNode.textContent = value;
+      div.append(labelNode, valueNode); el.resultDetails.appendChild(div);
+    }
+
+    function setRankingStatus(text, type) { el.rankingStatus.textContent = text; el.rankingStatus.className = `ranking-status ${type || 'neutral'}`; }
+    function renderSubmissionStatus() {
+      if (!lastResult) return;
+      const run = lastResult.run;
+      let key = 'sendIdle';
+      if (lastResult.status !== 'clear') key = 'retireNoSend';
+      else if (!run || !run.identity.participating) key = 'sendAnonymous';
+      else key = { idle: 'sendIdle', pending: 'sendPending', confirmed: 'sendReceived', uncertain: 'sendUncertain' }[run.submission] || 'sendIdle';
+      setRankingStatus(t(key), run && run.submission === 'uncertain' ? 'error' : 'neutral');
+    }
+    async function submitRanking() {
+      const resultSnapshot = lastResult;
+      if (!resultSnapshot || !MMCommon.beginSubmission(resultSnapshot.run, resultSnapshot.status)) return;
+      renderSubmissionStatus();
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12000);
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/submit_score`, { method: 'POST', signal: controller.signal, headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ p_display_name: resultSnapshot.run.identity.name, p_game_slug: resultSnapshot.mode.rankingSlug, p_score: resultSnapshot.scoreInt, p_client_version: CLIENT_VERSION }) });
+        const text = await res.text();
+        if (!res.ok) throw new Error('Score response was not accepted');
+        const validation = validateNormalScoreAck8(JSON.parse(text), {
+          gameSlug: resultSnapshot.mode.rankingSlug,
+          displayName: resultSnapshot.run.identity.name,
+          score: resultSnapshot.scoreInt,
+          scoreOrder: 'asc'
+        });
+        // Confirmed here means normal-eight response consistency only:
+        // it is not participant identity, read-back durability or idempotency.
+        MMCommon.settleSubmission(resultSnapshot.run, validation.ok);
+        if (lastResult === resultSnapshot) { renderSubmissionStatus(); if (validation.ok) loadResultRanking(); }
+      } catch (e) {
+        MMCommon.settleSubmission(resultSnapshot.run, false);
+        if (lastResult === resultSnapshot) renderSubmissionStatus();
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+    function renderRankingList() {
+      el.resultRankingList.innerHTML = '';
+      el.reloadRankingButton.hidden = resultRankingState === 'loading';
+      if (resultRankingState !== 'ready' || !resultRankingRows.length) {
+        const p = document.createElement('p'); p.className = 'ranking-empty';
+        p.textContent = t(resultRankingState === 'error' ? 'loadFailed' : resultRankingState === 'ready' ? 'empty' : 'loading');
+        el.resultRankingList.appendChild(p); return;
+      }
+      for (const item of resultRankingRows) {
+        const div = document.createElement('div'); div.className = 'ranking-item';
+        const rank = document.createElement('strong'); rank.textContent = item.rank === null ? '—' : String(item.rank);
+        const name = document.createElement('span'); name.textContent = item.name || '—';
+        const score = document.createElement('strong'); score.textContent = fmt(item.seconds);
+        div.append(rank, name, score); el.resultRankingList.appendChild(div);
+      }
+    }
+    async function loadResultRanking() {
+      if (!lastResult || !lastResult.mode) return;
+      const resultSnapshot = lastResult;
+      const request = ++rankRequest;
+      if (rankController) rankController.abort();
+      const controller = new AbortController(); rankController = controller;
+      const timeout = setTimeout(() => controller.abort(), 12000);
+      resultRankingState = 'loading'; renderRankingList();
+      try {
+        const url = `${SUPABASE_URL}/rest/v1/rpc/get_best_score_ranking`;
+        const res = await fetch(url, { method: 'POST', signal: controller.signal, headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ p_game_slug: resultSnapshot.mode.rankingSlug, p_limit: 30 }) });
+        const text = await res.text(); if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
+        const data = text ? JSON.parse(text) : [];
+        const rows = MMCommon.rankingRows(data);
+        if (lastResult !== resultSnapshot || request !== rankRequest) return;
+        resultRankingRows = rows; resultRankingState = 'ready'; renderRankingList();
+      } catch (e) {
+        if (lastResult !== resultSnapshot || request !== rankRequest) return;
+        resultRankingState = 'error'; renderRankingList();
+      } finally { clearTimeout(timeout); if (rankController === controller) rankController = null; }
+    }
+
+    function retry() { if (lastResult && lastResult.modeKey) start(lastResult.modeKey); }
+    function backHome() { clearInterval(timer); clearInterval(countdownTimer); rankRequest++; if (rankController) rankController.abort(); closeShare(); closeRules(); renderHome(); showScreen('home'); }
+    function buildGameShare() { return MMCommon.shareText(language, null, MMText.text); }
+    function buildResultShare() { return MMCommon.shareText(language, lastResult, MMText.text); }
+    async function copy(text) {
+      const generation = shareGeneration;
+      try {
+        if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(text);
+        else { $('shareFallbackText').focus(); $('shareFallbackText').select(); if (!document.execCommand('copy')) throw new Error('copy unavailable'); }
+        if (generation !== shareGeneration) return;
+        showToast(t('copied'));
+      } catch {
+        if (generation !== shareGeneration) return;
+        showToast(t('copyFailed')); $('shareFallbackText').focus(); $('shareFallbackText').select();
+      }
+    }
+    function openX(text) {
+      shareGeneration++;
+      $('shareFallback').classList.remove('open');
+      sound.hide();
+      let popup = null;
+      try {
+        popup = window.open('', '_blank');
+        if (!popup) throw new Error('popup blocked');
+        popup.opener = null;
+        if (popup.opener !== null) throw new Error('opener protection unavailable');
+        const meta = popup.document.createElement('meta'); meta.name = 'referrer'; meta.content = 'no-referrer';
+        popup.document.head.appendChild(meta);
+        const link = popup.document.createElement('a');
+        link.href = MMCommon.xIntent(text); link.target = '_self'; link.rel = 'noopener noreferrer'; link.referrerPolicy = 'no-referrer';
+        popup.document.body.appendChild(link); link.click();
+        return;
+      } catch {
+        try { if (popup) popup.close(); } catch {}
+        // Keep the result and offer a user-triggered copy fallback.
+      }
+      $('shareFallbackText').value = text;
+      $('shareFallback').classList.add('open'); $('shareFallbackText').focus();
+    }
+    function shareGame() { openX(buildGameShare()); }
+    function shareResult() { if (lastResult) openX(buildResultShare()); }
+    function copyShare() { copy($('shareFallbackText').value); }
+    function closeShare() { shareGeneration++; $('shareFallback').classList.remove('open'); }
+    function openRules() { sound.gesture(); sound.play('select'); el.rulesModal.classList.add('open'); }
+    function closeRules() { el.rulesModal.classList.remove('open'); }
+    function renderSettings() {
+      $('languageSelect').value = language;
+      $('soundToggle').textContent = t(soundSettings.enabled ? 'on' : 'off');
+      $('soundToggle').setAttribute('aria-pressed', String(soundSettings.enabled));
+      $('volumeInput').value = String(soundSettings.volume);
+    }
+    function applyLanguage() {
+      document.documentElement.lang = language;
+      document.querySelectorAll('[data-i18n]').forEach(node => { node.textContent = t(node.dataset.i18n); });
+      el.playerNameInput.placeholder = t('namePlaceholder');
+      if (el.nameError.textContent) el.nameError.textContent = t('storageFailed');
+      document.querySelector('meta[name="description"]').content = t('shareIntro');
+      document.querySelector('meta[property="og:description"]').content = t('shareIntro');
+      if (state) el.modeLabel.textContent = modeLabel(state.modeKey);
+      renderSettings(); renderScores();
+      if (lastResult) { renderResult(); renderRankingList(); }
+      // Never regenerate a board, reset a timer, or submit from a language change.
+    }
+    function changeLanguage(value) {
+      if (!MMCommon.languages.some(item => item.id === value)) return;
+      language = value;
+      try { localStorage.setItem(LANGUAGE_KEY, value); } catch {}
+      applyLanguage();
+      el.savedNameText.textContent = getName() ? t('saved', { name: getName() }) : t('anonymous');
+    }
+    function saveSound() {
+      sound.settings(soundSettings);
+      try { localStorage.setItem(SOUND_KEY, JSON.stringify(soundSettings)); } catch {}
+      renderSettings();
+    }
+    function toggleSound() { soundSettings.enabled = !soundSettings.enabled; saveSound(); if (soundSettings.enabled) sound.gesture(); }
+    function changeVolume(value) { soundSettings.volume = Math.min(1, Math.max(0, Number(value))); saveSound(); if (soundSettings.volume > 0) sound.gesture(); }
+
+    function blockGestures() {
+      document.addEventListener('dblclick', e => e.preventDefault(), { passive:false });
+      document.addEventListener('gesturestart', e => e.preventDefault(), { passive:false });
+      document.addEventListener('gesturechange', e => e.preventDefault(), { passive:false });
+      document.addEventListener('gestureend', e => e.preventDefault(), { passive:false });
+      document.addEventListener('contextmenu', e => { if (e.target && !['INPUT','TEXTAREA'].includes(e.target.tagName)) e.preventDefault(); });
+      document.addEventListener('touchmove', e => { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive:false });
+    }
+
+    window.MM = { start, tapSource, useHint, retire, retry, backHome, shareGame, shareResult, loadResultRanking, openRules, closeRules, saveNameFromHome, changeLanguage, toggleSound, changeVolume, copyShare, closeShare };
+    el.playerNameInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) saveNameFromHome(); });
+    document.addEventListener('pointerdown', e => { if (!['soundToggle', 'volumeInput'].includes(e.target.id)) sound.gesture(); }, { passive: true });
+    document.addEventListener('keydown', e => { if (!['soundToggle', 'volumeInput', 'playerNameInput'].includes(e.target.id) && !e.isComposing) sound.gesture(); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) sound.hide(); });
+    window.addEventListener('pagehide', () => sound.hide());
+    for (const item of MMCommon.languages) { const option = document.createElement('option'); option.value = item.id; option.textContent = item.name; $('languageSelect').appendChild(option); }
+    blockGestures();
+    applyLanguage();
+    renderHome();
+  })();
+  </script>
+</body>
+</html>

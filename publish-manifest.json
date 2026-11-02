@@ -1,0 +1,9 @@
+{
+  "repository": "chameleonjp-lab/matigaimikke",
+  "publishRoot": "site",
+  "runtimeFiles": ["site/index.html", "site/common.js", "site/locales.js", "site/audio.js", "site/normal-score-ack8.js"],
+  "excluded": ["tests", "docs", ".github", "README.md", "publish-manifest.json"],
+  "thumbnail": {"status": "pending", "reason": "An actual-game screenshot will be added after publication verification. No placeholder or fabricated image is declared."},
+  "canonicalURL": "https://chameleonjp.codeberg.page/machigai_mikke/",
+  "canonicalSwitch": "Only after the owner merges, Pages publishes and the new game URL is verified."
+}
