@@ -53,6 +53,12 @@ function checkThumbnail(markup, inventory, exists) {
   assert.equal(decodeURIComponent(url.pathname.split('/').pop()), path.slice(5));
   for (const image of images) assert.equal(image.url, inventory.thumbnail.url, 'OG and Twitter must refer to the declared real asset');
 }
+const expectedGameUrl = 'https://chameleonjp-lab.github.io/matigaimikke/';
+assert.ok(html.includes('<link rel="canonical" href="' + expectedGameUrl + '">'));
+assert.ok(html.includes('<meta property="og:url" content="' + expectedGameUrl + '">'));
+assert.ok(html.includes('<meta name="twitter:card" content="summary_large_image">'));
+assert.equal(manifest.canonicalURL, expectedGameUrl);
+assert.equal(manifest.thumbnail.url, new URL('social-card.jpg', expectedGameUrl).href);
 checkThumbnail(html, manifest, path => fs.existsSync(root + path) && fs.statSync(root + path).isFile());
 const pendingImage = { thumbnail: { status: 'pending' }, runtimeFiles: [] };
 checkThumbnail('<meta name="twitter:card" content="summary">', pendingImage, () => false);

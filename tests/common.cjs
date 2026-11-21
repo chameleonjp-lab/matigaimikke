@@ -85,7 +85,7 @@ test('mode detail routes use old game identity, never repository spelling', () =
 });
 test('home and current confirmed result shares include canonical URL and only two tags', () => {
   const home = C.shareText('ja', null, T.text);
-  assert.ok(home.includes('https://chameleonjp.codeberg.page/machigai_mikke/'));
+  assert.ok(home.includes('https://chameleonjp-lab.github.io/matigaimikke/'));
   const result = C.shareText('en', { status: 'clear', modeKey: 'hard', finalSeconds: 12.34, best: 1 }, T.text);
   assert.ok(result.includes('12.34'));
   assert.ok(result.includes('Hard'));

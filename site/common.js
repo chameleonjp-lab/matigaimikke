@@ -62,7 +62,7 @@ const MMCommon = Object.freeze({
         ? text(language, 'finalSeconds') + ': ' + Number(result.finalSeconds).toFixed(2) + ' ' + text(language, 'seconds')
         : text(language, 'retired') + ' · ' + Number(result.elapsedSeconds).toFixed(2) + ' ' + text(language, 'seconds') + ' · ' + text(language, 'found') + ' ' + result.found + '/9');
     }
-    parts.push('https://chameleonjp.codeberg.page/machigai_mikke/', '#間違いみっけ #ゲーム制作');
+    parts.push('https://chameleonjp-lab.github.io/matigaimikke/', '#間違いみっけ #ゲーム制作');
     return parts.join('\n');
   },
   xIntent(text) { return 'https://x.com/intent/post?' + new URLSearchParams({ text }).toString(); },
