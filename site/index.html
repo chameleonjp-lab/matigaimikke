@@ -352,7 +352,7 @@
     const LANGUAGE_KEY = 'machigai_mikke_language_v1';
     const SOUND_KEY = 'machigai_mikke_sound_v1';
     function readSetting(key) { try { return localStorage.getItem(key); } catch { return null; } }
-    let language = MMCommon.resolveLanguage(readSetting(LANGUAGE_KEY), navigator.languages || [navigator.language]);
+    let language = MMCommon.resolveLanguage(readSetting(LANGUAGE_KEY), [...(Array.isArray(navigator.languages) ? navigator.languages : []), navigator.language]);
     let soundSettings = MMCommon.soundSettings(readSetting(SOUND_KEY));
     const sound = MMAudio.create({ AudioContext: window.AudioContext || window.webkitAudioContext, now: () => performance.now() / 1000, hidden: () => document.hidden }, soundSettings);
     const t = (key, parameters) => MMText.text(language, key, parameters);
