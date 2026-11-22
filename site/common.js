@@ -27,8 +27,10 @@ const MMCommon = Object.freeze({
   resolveLanguage(saved, browsers) {
     const supported = MMCommon.languages.map(item => item.id);
     if (supported.includes(saved)) return saved;
-    for (const value of Array.isArray(browsers) ? browsers : []) {
-      const parts = String(value).trim().toLowerCase().replace(/_/g, '-').split('-');
+    const preferences = (Array.isArray(browsers) ? browsers : []).filter(value => typeof value === 'string' && value.trim());
+    for (const value of preferences) {
+      const tag = value.trim().toLowerCase().replace(/_/g, '-');
+      const fields = tag.split('-'); const extension = fields.findIndex((field, i) => i > 0 && /^[a-z0-9]$/.test(field)); const parts = extension < 0 ? fields : fields.slice(0, extension);
       if (parts[0] === 'zh') {
         if (parts.includes('hant')) return 'zh-Hant';
         if (parts.includes('hans')) return 'zh-Hans';
@@ -37,7 +39,7 @@ const MMCommon = Object.freeze({
       if (parts[0] === 'pt') return 'pt-BR';
       if (supported.includes(parts[0])) return parts[0];
     }
-    return 'en';
+    return preferences.length ? 'en' : 'ja';
   },
   rankingRows(data) {
     if (!Array.isArray(data)) throw new Error('Unexpected ranking response');
