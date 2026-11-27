@@ -507,6 +507,8 @@
     function startGameScreen() {
       if (!state) return;
       state.startedAt = performance.now();
+      void import(/* @vite-ignore */ "https://chameleonjp-lab.github.io/chameleonjp_lab/play-start.js").then(module => module.recordPlayStart(state.mode.rankingSlug)).catch(() => {});
+
       state.ended = false; state.finishLock = false;
       el.modeLabel.textContent = modeLabel(state.modeKey);
       renderBoards(); updateHud();
